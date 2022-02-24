@@ -65,44 +65,135 @@ for p in range(P):
 # print(f'Num contributors: {len(Contribs)}, avg skills per contributor: {sum(avg_skills_num) / len(avg_skills_num)}')
 # print(f'Num projects: {len(Projects)}, avg num skills required: {sum(avg_skills_needed) / len(avg_skills_needed)}')
 
-gain = lambda p: p.S / p.D
-project_by_gain = sorted(Projects.values(), key=gain, reverse=True)
+gain = lambda p: p.B
+all_projects = list(Projects.values())
+not_allocated_projects = set(Projects.keys())
 
-projects = []
+project_solutions = []
+current_day = 0
+something_allocated = True
 
-for project in project_by_gain:
-    role_assigmnents = []
-    impossible = False
+while something_allocated:
+    all_projects = [p for name, p in Projects.items() if name in not_allocated_projects]
+    something_allocated = False
 
-    taken_contribs = set()
+    projects_order = sorted(all_projects, key=lambda p: max(0, p.S + min(0, p.B - current_day - p.D)))
+    for project in projects_order:
+        role_assigmnents = []
+        impossible = False
 
-    for skill, level in project.skills:
-        min_contributor_skill = float("inf")
-        min_contributor = None
+        taken_contribs = set()
+        requires_mentoring = {}
 
-        for contrib_name, contrib_skills in Contribs.items():
-            if (
-                contrib_skills.get(skill, -1) >= level and
-                min_contributor_skill > contrib_skills.get(skill, -1) and 
-                contrib_name not in taken_contribs
-            ):
-                min_contributor = contrib_name
-                min_contributor_skill = contrib_skills.get(skill, -1)
+        for skill, level in project.skills:
+            ok = False
+            for contrib_name, contrib_skills in Contribs.items():
+                if contrib_skills.get(skill, -1) >= level:
+                    ok = True
+                    break
 
-        if min_contributor is None:
-            impossible = True
+            if not ok:
+                if skill in requires_mentoring:
+                    requires_mentoring[skill] = max(requires_mentoring[skill], level)
+                else:
+                    requires_mentoring[skill] = level
+
+        change = True
+        job_id_to_person = {}
+        bump_skill = []
+        
+        while change:
+            max_mentor_skills = []
+            max_mentor_name = None
+            job_allocation = None
+            skill_diff = None
+            change = False
+
+            for contrib_name, contrib_skills in Contribs.items():
+                skills_can_mentor = [skill for skill, level in contrib_skills.items()
+                                    if skill in requires_mentoring and requires_mentoring[skill] <= level]
+                min_skill_diff = float("inf")
+                min_skill = None
+                for idx, (skill, level) in enumerate(project.skills):
+                    skill_diff = contrib_skills.get(skill, -1) - level
+                    if (
+                        idx not in job_id_to_person and 
+                        contrib_skills.get(skill, -1) >= level and
+                        skill_diff < min_skill_diff
+                    ):
+                        min_skill_diff = skill_diff
+                        min_skill = idx
+
+                if min_skill is None:
+                    continue
+
+                if len(skills_can_mentor) > len(max_mentor_skills):
+                    max_mentor_skills = skills_can_mentor
+                    max_mentor_name = contrib_name
+                    skill_diff = min_skill_diff
+                    job_allocation = idx
+
+            if len(max_mentor_skills):
+                change = True
+                    
+                for mentor_skill in max_mentor_skills:
+                    requires_mentoring.pop(skill)
+                    for project_skill_idx in range(len(project.skills)):
+                        if project.skills[project_skill_idx][0] == skill:
+                            project.skills[project_skill_idx][1] -= 1
+                
+                job_id_to_person[job_allocation] = max_mentor_name
+                if skill_diff == 0:
+                    bump_skill.append([max_mentor_name, idx])
+                taken_contribs.add(max_mentor_name)
+                
+        if requires_mentoring:
+            continue
+
+        for idx, (skill, level) in enumerate(project.skills):
+            if idx in job_id_to_person:
+                continue
+
+            min_contributor_skill = float("inf")
+            min_contributor = None
+            min_skill_diff = None
+
+            for contrib_name, contrib_skills in Contribs.items():
+                skill_diff = contrib_skills.get(skill, -1) - level
+                if (
+                    skill_diff >= 0 and
+                    min_contributor_skill > contrib_skills.get(skill, -1) and 
+                    contrib_name not in taken_contribs
+                ):
+                    min_contributor = contrib_name
+                    min_contributor_skill = contrib_skills.get(skill, -1)
+                    min_skill_diff = skill_diff
+
+            if min_contributor is None:
+                impossible = True
+                break
+
+            taken_contribs.add(min_contributor)
+            job_id_to_person[idx] = min_contributor
+            if min_skill_diff == 0:
+                bump_skill.append([min_contributor, idx])
+
+        if not impossible:
+            something_allocated = True
+            project_solutions.append([project.name, job_id_to_person])
+            not_allocated_projects.remove(project.name)
+            current_day += project.D
+
+            for person, skill_idx in bump_skill:
+                Contribs[person][project.skills[skill_idx][0]] += 1
+
             break
+            
 
-        taken_contribs.add(min_contributor)
-        role_assigmnents.append(min_contributor)
-
-    if not impossible:
-        projects.append([project.name, role_assigmnents])
-
-print(len(projects))
-for name, assignments in projects:
+print(len(project_solutions))
+for name, assignments in project_solutions:
     print(name)
-    print(" ".join(n for n in assignments))
+    print(" ".join(assignments[idx] for idx in range(len(assignments))))
     
     
 
