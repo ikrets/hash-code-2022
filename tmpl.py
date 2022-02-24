@@ -1,14 +1,19 @@
+#!/usr/bin/env python
+
 import os, sys
-from typing import Dict
+from typing import Dict, List, Tuple
 from dataclasses import dataclass
 from collections import namedtuple
+import pandas as pd
 
 # an integer C (1 ≤ C≤ 105) – the number of contributors,
 # an integer P (1 ≤ P ≤ 105) – the number of projects.
 C, P = map(int, input().split())
 
-avg_skills_num = []
-avg_skills_needed = []
+stat_skills_amount = []
+stat_skills_required = []
+stat_skills_level = []
+projects_scores = []
 
 # the first line contains:
 # the contributor's name (ASCII string of at most 20 characters, all of which are lowercase or uppercase English alphabet letters a-z and A-Z, or numbers 0-9),
@@ -17,6 +22,7 @@ avg_skills_needed = []
 # the name of the skill (ASCII string of at most 20 characters, all of which are lowercase or uppercase English alphabet letters a-z and A-Z, numbers 0-9, dashes '-' or pluses '+'),
 # an integer Li (1≤ Li ≤ 10) - skill level.
 Contribs = {}
+ContribSkills = {}
 for c in range(C):
     name, nskills = input().split()
     nskills = int(nskills)
@@ -26,9 +32,11 @@ for c in range(C):
         skill, level = input().split()
         level = int(level)
         skills[skill] = level
+        ContribSkills.setdefault(skill, set()).add(name)
+        stat_skills_level.append(level)
 
     Contribs[name] = skills
-    avg_skills_num.append(len(skills))
+    stat_skills_amount.append(len(skills))
 
 # the first line contains:
 # the name of the project (ASCII string of at most 20 characters, all of which are lowercase or uppercase English alphabet letters a-z and A-Z or numbers 0-9),
@@ -47,21 +55,54 @@ class Project:
     S: int
     B: int
     R: int
-    skills: Dict[str, int]
+    skills: List[Tuple[str, int]]
 
-Projects = {}
+Projects = []
 for p in range(P):
     name, *constr = input().split()
     D, S, B, R = map(int, constr)
-    skills = {}
+    skills = []
     for r in range(R):
         skill, level = input().split()
-        skills[skill] = int(level)
+        skills.append((skill, int(level)))
 
-    Projects[name] = Project(name, D, S, B, R, skills)
-    avg_skills_needed.append(len(skills))
+    assert len(skills) == R
+    Projects.append(Project(name, D, S, B, R, skills))
+    stat_skills_required.append(len(skills))
+    projects_scores.append(S)
 
-print(f'Num contributors: {len(Contribs)}, avg skills per contributor: {sum(avg_skills_num) / len(avg_skills_num)}')
-print(f'Num projects: {len(Projects)}, avg num skills required: {sum(avg_skills_needed) / len(avg_skills_needed)}')
+print(f'*** Num contributors: {len(Contribs)}, avg skills per contributor:')
+print(pd.Series(stat_skills_amount).describe())
+print(f'*** Num projects: {len(Projects)}, avg skills required:')
+print(pd.Series(stat_skills_required).describe())
+print(f'skills level: {pd.Series(stat_skills_level).describe()}')
+print(f'*** Score upper bound: {sum(projects_scores)}')
+# 800 10000
+# c574 1
+# s132 10
+# c376 1
+# s100 10
+# c312 1
+# s652 10
+# c752 1
+# s740 10
+# c620 1
+# s668 10
+# c317 1
+# p9020 84 349 36349 5
+# s200 10
+# s780 10
+# s606 10
+# s781 10
+# s315 10
+# p2023 50 26 28195 1
+# s702 10
+# p2329 64 415 39145 5
+# s45 10
+# s689 10
+# s580 10
+# s699 10
+# s482 10
 
+# Projects.sort(key=lambda p: ( p.))
 
