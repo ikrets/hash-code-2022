@@ -57,6 +57,10 @@ class Project:
     R: int
     skills: List[Tuple[str, int]]
 
+durations = []
+scores = []
+best_befores = []
+
 Projects = []
 for p in range(P):
     name, *constr = input().split()
@@ -70,12 +74,17 @@ for p in range(P):
     Projects.append(Project(name, D, S, B, R, skills))
     stat_skills_required.append(len(skills))
     projects_scores.append(S)
+    durations.append(D)
+    best_befores.append(B)
 
 print(f'*** Num contributors: {len(Contribs)}, avg skills per contributor:')
 print(pd.Series(stat_skills_amount).describe())
 print(f'*** Num projects: {len(Projects)}, avg skills required:')
 print(pd.Series(stat_skills_required).describe())
 print(f'skills level: {pd.Series(stat_skills_level).describe()}')
+print(f'project scores: {pd.Series(projects_scores).describe()}')
+print(f'project durations: {pd.Series(durations).describe()}')
+print(f'project best befores: {pd.Series(best_befores).describe()}')
 print(f'*** Score upper bound: {sum(projects_scores)}')
 # 800 10000
 # c574 1
